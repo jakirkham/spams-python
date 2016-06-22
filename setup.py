@@ -1,38 +1,37 @@
 import os
+import sys
 #os.environ['DISTUTILS_DEBUG'] = "1"
 from distutils.core import setup, Extension
+from distutils.sysconfig import get_python_inc
 import distutils.util
 import numpy
+from numpy.distutils.system_info import blas_info
 
 # includes numpy : package numpy.distutils , numpy.get_include()
 # python setup.py build --inplace
 # python setup.py install --prefix=dist, 
-incs = ['.'] + map(lambda x: os.path.join('spams',x),[ 'linalg', 'prox', 'decomp', 'dictLearn']) + [numpy.get_include()] + ['/usr/include/python2.7/']
+incs = ['.'] + [os.path.join('spams', x) for x in [ 'linalg', 'prox', 'decomp', 'dictLearn']] + [numpy.get_include(), get_python_inc()] + blas_info().get_include_dirs()
 
 osname = distutils.util.get_platform()
-cc_flags = ['-fPIC', '-fopenmp']
-link_flags = ['-fopenmp', '-s' ]
-libs = ['stdc++', 'blas', 'lapack' ]
-libdirs = []
 
-if osname.startswith("macosx"):
-    cc_flags = ['-fPIC', '-fopenmp','-m32']
-    link_flags = ['-m32', '-framework', 'Python']
+cc_flags = ['-fPIC', '-fopenmp', '-Wunused-variable', '-m64']
+for _ in numpy.__config__.blas_opt_info.get("extra_compile_args", []):
+    if _ not in cc_flags:
+        cc_flags.append(_)
+for _ in numpy.__config__.lapack_opt_info.get("extra_compile_args", []):
+    if _ not in cc_flags:
+        cc_flags.append(_)
 
-if osname.startswith("win32"):
-    cc_flags = ['-fPIC', '-fopenmp','-DWIN32']
-    link_flags = ['-fopenmp', '-mwindows']
-    path = os.environ['PATH']
-    os.environ['PATH'] = 'C:/MinGW/bin;' + path
-    libs = ['stdc++', 'Rblas', 'Rlapack' ]
-    libdirs = ['C:/Program Files/R/R-2.15.1/bin/i386']
+link_flags = ['-fopenmp']
+for _ in numpy.__config__.blas_opt_info.get("extra_link_args", []):
+    if _ not in link_flags:
+        link_flags.append(_)
+for _ in numpy.__config__.lapack_opt_info.get("extra_link_args", []):
+    if _ not in link_flags:
+        link_flags.append(_)
 
-if osname.startswith("win-amd64"):
-    cc_flags = ['-openmp', '-EHsc', '-DWIN32', '-DCYGWIN', '-DWINDOWS', '-I','C:/Program Files (x86)/Microsoft Visual Studio 9.0/VC/include']
-    link_flags = []
-    libs = [ 'Rblas', 'Rlapack' ]
-    libdirs = ['C:/Program Files (x86)/Microsoft Visual Studio 9.0/VC/lib/amd64','C:/Program Files/R/R-2.15.1/bin/x64']
-
+libs = ['stdc++', 'blas', 'lapack', 'gomp']
+libdirs = numpy.distutils.system_info.blas_info().get_lib_dirs()
 
 ##path = os.environ['PATH']; print "XX OS %s, path %s" %(osname,path)
 
@@ -76,13 +75,13 @@ setup (name = 'spams',
        ext_modules = [spams_wrap,],
        py_modules = ['spams', 'spams_wrap', 'myscipy_rand'],
 #       scripts = ['test_spams.py'],
-       data_files = [
-        ('test',['test_spams.py', 'test_decomp.py', 'test_dictLearn.py', 'test_linalg.py', 'test_prox.py', 'test_utils.py']),
-        ('doc',['doc_spams.pdf', 'python-interface.pdf']), 
-        ('doc/sphinx/_sources',mkhtml('_sources')),
-        ('doc/sphinx/_static',mkhtml('_static')),
-        ('doc/sphinx',mkhtml()),
-        ('doc/html',mkhtml(base = 'html')),
-        ('extdata',['boat.png', 'lena.png'])
-        ],
+#       data_files = [
+#        ('test',['test_spams.py', 'test_decomp.py', 'test_dictLearn.py', 'test_linalg.py', 'test_prox.py', 'test_utils.py']),
+#        ('doc',['doc_spams.pdf', 'python-interface.pdf']), 
+#        ('doc/sphinx/_sources',mkhtml('_sources')),
+#        ('doc/sphinx/_static',mkhtml('_static')),
+#        ('doc/sphinx',mkhtml()),
+#        ('doc/html',mkhtml(base = 'html')),
+#        ('extdata',['boat.png', 'lena.png'])
+#        ],
 )
